@@ -106,21 +106,63 @@ There is not a particular end user who will be using this. Rather, this will ser
 * Docker should be installed
 * OpenShift cli for oc commands
 * OpenWhisk cli setup and wsk binaries path set in $PATH
-* If running on a VM Node.js should be installed on the machine
+* If running on a VM, Node.js should be installed on the machine
 
 ### Commands
-* sudo systemctl start docker
-* sudo ip link set docker0 promisc on
-* sudo systemctl restart docker
-* sudo oc cluster up
-* sudo oc new-project openwhisk
-* sudo oc process -f ./template.yml |sudo  oc create -f -
+```
+ sudo systemctl start docker
+ sudo ip link set docker0 promisc on
+ sudo systemctl restart docker
+ sudo oc cluster up
+ sudo oc new-project openwhisk
+ sudo oc process -f ./template.yml |sudo  oc create -f -
 
-* sudo oc logs -f $(sudo oc get pods | grep controller | awk '{print $1}') | grep "invoker status changed"
-(wait till invoker status changed is healthy)
+ sudo oc logs -f $(sudo oc get pods | grep controller | awk '{print $1}') | grep "invoker status changed"
+ (wait till invoker status changed is healthy)
 
-* AUTH_SECRET=$(sudo oc get secret whisk.auth -o yaml | grep "system:" | awk '{print $2}' | base64 --decode) &&
-/home/fedora/binaries/wsk property set --auth $AUTH_SECRET --apihost $(sudo oc get route/openwhisk --template={{.spec.host}})
+ AUTH_SECRET=$(sudo oc get secret whisk.auth -o yaml | grep "system:" | awk '{print $2}' | base64 --decode) &&
+ /home/fedora/binaries/wsk property set --auth $AUTH_SECRET --apihost $(sudo oc get route/openwhisk --template={{.spec.host}})
 
-* node orchestrator.js
+ node orchestrator.js
+```
+ #### Monitor:
+ ```
+ sudo oc get pods
+ sudo oc get all
+ use the watch command for convenience
+ ```
+ #### Cleanup:
+ ```
+ sudo oc process -f template.yml | sudo oc delete -f -
+ sudo oc cluster down
+ ```
 
+## Steps to run OpenWhisk on OpenShift on Mass Open Cloud (MOC):
+### Through Web Console:
+ * Login to MOC
+ * Create a project
+ * Download/Copy the template file at [https://git.io/openwhisk-template](https://git.io/openwhisk-template)
+ * Add to project -> Add the template from previous step
+ * Alter any parameters as you may need in the template wizard
+ * Copy OpenWhisk authentication
+ * Start the deployments
+ 
+
+### Through command line:
+### Prerequisite
+ * OpenShift cli for oc commands
+ * OpenWhisk cli setup and wsk binary
+
+### Steps
+  Login to the MOC:
+  ```
+  oc login https://openshift.massopen.cloud <token>
+  ```
+  Create a new project by running:
+  ```
+  oc new-project <projectname>
+  ```
+  Deploy OpenWhisk in your OpenShift project using the latest ephemeral template:
+  ```
+  oc process -f https://git.io/openwhisk-template | oc create -f -
+  ```
