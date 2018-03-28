@@ -1,0 +1,23 @@
+{
+  "name": "Serverless-Supercomputing",
+  "version": "1.0.0",
+  "description": "Serverless/FaaS computing really started taking off with the launch of AWS Lamba.  However, the downside of a vendor-specific solution like AWS Lambda is vendor lock-in - you can no longer easily move your application to another provider and you have no control over your cost. Recently Red Hat and other companies have made a bet on Apache OpenWhisk, an Open Source solution for serverless computing that will run across all cloud and on-premise environments, and which as an Open Source solution can be implemented by multiple vendors or by users themselves.",
+  "main": "orchestrator.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BU-NU-CLOUD-SP18/Serverless-Supercomputing.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/BU-NU-CLOUD-SP18/Serverless-Supercomputing/issues"
+  },
+  "homepage": "https://github.com/BU-NU-CLOUD-SP18/Serverless-Supercomputing#readme",
+  "dependencies": {
+    "request": "^2.85.0"
+  }
+}
