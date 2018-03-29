@@ -166,3 +166,6 @@ There is not a particular end user who will be using this. Rather, this will ser
   ```
   oc process -f https://git.io/openwhisk-template | oc create -f -
   ```
+
+## Performance and Scalibilty Analysis
+To take a deep dive in Performance and Scalibilty Analysis and what we learnt in each iteration refer "Performance and Scalibilty Analysis I.pdf" and "Performance and Scalibilty Analysis II.pdf" in performance-cpu-analysis
