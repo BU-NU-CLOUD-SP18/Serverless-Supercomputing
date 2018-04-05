@@ -28,7 +28,7 @@ In addition to the orchestrator, this repo includes reports detailing the perfor
  AUTH_SECRET=$(sudo oc get secret whisk.auth -o yaml | grep "system:" | awk '{print $2}' | base64 --decode) &&
  /home/fedora/binaries/wsk property set --auth $AUTH_SECRET --apihost $(sudo oc get route/openwhisk --template={{.spec.host}})
 
- node orchestrator.js
+ node orchestrator.js ./config.js
 ```
  #### Monitor:
  ```
