@@ -1,59 +1,76 @@
 const startingMilliseconds = Date.now();
 
+// Checks if the given resource is provided, otherwise prints the given
+// error message indicating the process failed due to an error
+// with the config file. Exits the process.
+const checkConfigFile = function (resource, errMsg){
+	if (!resource){
+		console.log("Error with config file: " + errMsg);
+		process.exit(1);
+	}
+};
+
+// Verify the config file contains all needed resources
+checkConfigFile(process.argv[2], "No file passed as argument");
+const configFile = process.argv[2];
+const custom = require(configFile);
+checkConfigFile(custom.action, "Need to export a function named 'action' to be run on OpenWhisk.");
+checkConfigFile(custom.reduce, "Need to export a function named 'reduce' to combine results.");
+checkConfigFile(custom.configs, "Need to export a dictionary named 'configs' with requred configurations.");
+checkConfigFile(custom.configs['numActions'], "Configs dictionary must contain 'numActions' parameter.");
+checkConfigFile(custom.configs['actionName'], "Configs dictionary must contain 'actionName' parameter.");
+checkConfigFile(custom.configs['namespace'], "Configs dictionary must contain 'namespace' parameter.");
+
+const request = require('request');
 const execSync = require('child_process').execSync;
-var apiCommandOutput = execSync('wsk property get --apihost').toString();
+
+const apiCommandOutput = execSync('wsk property get --apihost').toString();
 // Command returns in form 'wsk api host [APIHOST]' so we split string to get host
-var APIHOST = apiCommandOutput.split(/\s+/)[3]; 
-//console.log(APIHOST);
+const APIHOST = apiCommandOutput.split(/\s+/)[3]; 
 
-var authCommandOutput = execSync('wsk property get --auth').toString();
+const authCommandOutput = execSync('wsk property get --auth').toString();
 // Command returns in form 'wisk auth [AUTH]' so we split string to get auth
-var AUTH = authCommandOutput.split(/\s+/)[2];
-var split_auth = AUTH.split(':');
-var USER = split_auth[0];
-var PWD = split_auth[1];
-//console.log(USER, PWD);
+const AUTH = authCommandOutput.split(/\s+/)[2];
+const split_auth = AUTH.split(':');
+const USER = split_auth[0];
+const PWD = split_auth[1];
 
-const NUM_ACTIONS = 100;
-const TOTAL_POINTS = 100000;
-const POINTS_PER_ACTION = TOTAL_POINTS / NUM_ACTIONS;
+const NUM_ACTIONS = custom.configs['numActions']
+var responsesReceived = 0;
 
+// Maps activation id to the action's number (0 -> NUM_ACTIONS - 1). Used
+// to regenerate the correct parameters when triggering a new action 
+// if an old action failed
+var activationIdToActionNumMap = {};
 
 // Ignore self signed cert
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-var piFunctionString = "function main(params) { " +
-	"var numPoints = parseInt(params.numPoints); " +
-	"var inCircle = 0; " +
-	"for(var i=0; i<numPoints; i++){ " +
-		"randX = (Math.random() * 2) - 1; " +
-		"randY = (Math.random() * 2) - 1; " +
-		"distFromCenter = Math.sqrt(randX * randX + randY * randY); " +
-		"if (distFromCenter <= 1){ " +
-			"inCircle = inCircle + 1; " +
-		"} " +
-	"} " +
-	"return {inCircle: inCircle}; " +
-"}";
+// Generates url for OpenWhisk API. Url always begins with
+// https://${AUTH}@${APIHOST}/api/v1/namespaces/${custom.configs['namespace']}/
+// and the passed in urlEnding is appended to the end
+const generateUrl = function(urlEnding){
+ return `https://${AUTH}@${APIHOST}/api/v1/namespaces/${custom.configs['namespace']}/${urlEnding}`;
+};
 
-
-const request = require('request');
+// Promise which makes an HTTP PUT request to register the action on OpenWhisk
 const registerActionPromise = new Promise((resolve, reject) => {
-	var headers = {
+	const headers = {
     	'Content-Type': 'application/json'
 	};
 
-	var dataString = JSON.stringify({
-		"namespace":"_",
-		"name":"testPoints",
+	const dataString = JSON.stringify({
+		"namespace": custom.configs['namespace'],
+		"name": custom.configs['actionName'],
 		"exec": {
 			"kind": "nodejs:6",
-			"code": piFunctionString
-		}
+			"code": custom.action.toString()
+		},
+		"limits": custom.configs['actionLimits']
 	});
 
-	var options = {
-	    url: 'https://' + AUTH + '@' + APIHOST + '/api/v1/namespaces/_/actions/testPoints?overwrite=true',
+	const options = {
+	    url: generateUrl(`actions/${custom.configs['actionName']}?overwrite=true`),
 	    method: 'PUT',
 	    headers: headers,
 	    body: dataString
@@ -62,12 +79,12 @@ const registerActionPromise = new Promise((resolve, reject) => {
 	function callback(error, response, body) {
 	    if (!error && response.statusCode == 200) {
 	        console.log(body);
-	        console.log("Action Registered");
+	        console.log("Action registered");
 	        resolve(body);
 	    } else {
 	    	console.log(error);
 			console.log(response);
-	    	resolve(false);
+	    	reject(response);
 	    }
 	}
 
@@ -75,66 +92,109 @@ const registerActionPromise = new Promise((resolve, reject) => {
 	request(options, callback);
 });
 
-const triggerActionPromise = function(){
+// Function which generates a promise. That promise will make an HTTP post request 
+// to OpenWhisk to trigger an action. Will only resolve once the action has completed
+// on OpenWhisk and the value has been returned
+const triggerActionPromise = function(actionNum){
 	return new Promise((resolve, reject) => {
-		var headers = {
+		const headers = {
 	    	'Content-Type': 'application/json'
 		};
 
-		var dataString = JSON.stringify({
-			"numPoints": POINTS_PER_ACTION
-		});
+		// Generate parameters for the action based on which action this is (0 -> NUM_ACTIONS - 1)
+		const actionArgs = custom.argsForAction ? custom.argsForAction(actionNum) : {};
+		const dataString = JSON.stringify(actionArgs);
 
-		var options = {
-		    url: 'https://' + AUTH + '@' + APIHOST + '/api/v1/namespaces/_/actions/testPoints?blocking=true',
+		const options = {
+		    url: generateUrl(`actions/${custom.configs['actionName']}`),
 		    method: 'POST',
 		    headers: headers,
 		    body: dataString
 		};
 
 		function callback(error, response, body) {
-		    if (!error && response.statusCode == 200) {
-		        resolve(JSON.parse(body));
+		    if (!error && response.statusCode == 202) {
+		    	body = JSON.parse(body);
+		    	const activationId = body.activationId;
+		    	activationIdToActionNumMap[activationId] = actionNum;
+
+		    	// Generate promise to get the result of the action with given activationId
+		    	getResultPromise(activationId).then(resolve).catch(reject);
 		    } else {
-		    	console.log(error);
-				console.log(response);
-			    resolve(false);
+				reject(response);
 		    }
 		}
 
 		request(options, callback);
 	});
-}
+};
 
+// Generates a promise which will query the OpenWhisk server to get the result of 
+// of the action with the given activationId. If the action has not finished, 
+// wait 5 seconds, then query OpenWhisk again. If the action failed, trigger a new
+// action to replace the failed one
+const getResultPromise = function(activationId){
+	return new Promise((resolve, reject) => {
+
+		var headers = {
+	    	'Content-Type': 'application/json'
+		};
+
+		var options = {
+		    url: generateUrl(`activations/${activationId}`),
+		    method: 'GET',
+		    headers: headers
+		};
+
+		function callback(error, response, body) {
+		    if (!error && response.statusCode == 200) {
+		    	body = JSON.parse(body);
+		    	var resp = body.response;
+		    	if (resp.status == 'success'){
+		    		responsesReceived++;
+		    		console.log(responsesReceived + " out of " + NUM_ACTIONS + " actions have finished");
+		    		resolve(resp.result);
+		    	} else if (resp.status == 'action developer error') {
+		    		console.log('Action ' + activationId + ' failed, trying again');
+		    		console.log(body);
+		    		triggerActionPromise(activationIdToActionNumMap[activationId]).then(resolve).catch(reject);
+		    	} else {
+		    		reject(response);
+		    	}
+		    } else if (!error && response.statusCode == 404) {
+		    	setTimeout(() => {
+			    	getResultPromise(activationId).then(resolve).catch(reject);
+		    	}, 5000);
+		    } else {
+		    	reject(response);
+		    }
+		}
+
+		request(options, callback);
+	});
+};
+
+// Creates an array of NUM_ACTIONS promises. Returns a promise
+// which only resolves once all of the triggered actions have 
+// finished
 const triggerActionPromises = function(){
 	const arr = [];
-	for (var i=0; i < NUM_ACTIONS; i++){
-		arr.push(triggerActionPromise());
+	for (var i = 0; i < NUM_ACTIONS; i++){
+		arr.push(triggerActionPromise(i));
 	}
-	console.log('Triggering Actions');
+	console.log('Triggering actions');
 	return new Promise((resolve, reject) => {
-		Promise.all(arr).then((res) => {
-			resolve(res);
-		})
+		Promise.all(arr).then(resolve).catch(reject);
 	});
-}
+};
 
-registerActionPromise.then(triggerActionPromises).then((resp) => {
-	if (resp){
-		
-		var totalInCircle = 0;
-		const totalPoints = NUM_ACTIONS * POINTS_PER_ACTION;
-		for (var i = 0; i< resp.length; i++){
-			var actionResult = resp[i]["response"]["result"]
-			console.log("Action " + (i + 1) + " finished with " + JSON.stringify(actionResult));
-			totalInCircle += actionResult['inCircle'];
-		}
-		console.log(totalInCircle + " out of " + totalPoints + " were in the circle.");
-		console.log("Computed Value of Pi: " + 4 * (totalInCircle / totalPoints));
-		console.log("Finished in " + ((Date.now() - startingMilliseconds) / 1000) + " seconds");
-	} else {
-		console.log('it didnt work')
-	}
-	
+// Register action, then trigger actions, then pass the responses to the 
+// provided user reduce function
+registerActionPromise.then(triggerActionPromises).then((response) => {
+	custom.reduce(response);
+	console.log("Finished in " + ((Date.now() - startingMilliseconds) / 1000) + " seconds");
+}).catch((err) => {
+	console.log(err);
+	console.log('Operation failed');
+	process.exit(1);
 });
-
