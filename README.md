@@ -43,17 +43,17 @@ In addition to the orchestrator, this repo includes reports detailing the perfor
  sudo oc cluster down
  ```
 
-## Steps to run OpenWhisk on OpenShift on Mass Open Cloud (MOC):
+## Steps to run orchestrator to use OpenWhisk on OpenShift on Mass Open Cloud (MOC):
 ### Through Web Console:
- * Login to MOC
+ * Login to http://openshift.massopen.cloud
  * Create a project
  * Download/Copy the template file at [https://git.io/openwhisk-template](https://git.io/openwhisk-template)
  * Add to project -> Add the template from previous step
  * Alter any parameters as you may need in the template wizard
  * Copy OpenWhisk authentication
  * Start the deployments
+ * Once all the pods are running, you will need to see the steps to setup wsk cli and execute orchestrator from the command line steps section
  
-
 ### Through command line:
 ### Prerequisite
  * OpenShift cli for oc commands
@@ -71,6 +71,41 @@ In addition to the orchestrator, this repo includes reports detailing the perfor
   Deploy OpenWhisk in your OpenShift project using the latest ephemeral template:
   ```
   oc process -f https://git.io/openwhisk-template | oc create -f -
+  ```
+  
+  Once all the pods are up, run the following command to check invoker status:
+  ```
+  oc logs -f controller-0 | grep -c "invoker status changed to 0 -> Healthy"
+  ```
+  If invoker status is healthy, proceed to the next step.
+  
+  Setup the wsk cli using:
+  ```
+  AUTH_SECRET=$(oc get secret whisk.auth -o yaml | grep "system:" | awk '{print $2}' | base64 --decode) && wsk property set --auth     $AUTH_SECRET --apihost $(oc get route/openwhisk --template={{.spec.host}})
+  ```
+  
+  You should see: 
+  ```
+  ok: whisk auth set. Run 'wsk property get --auth' to see the new value.
+  ok: whisk API host set to <api-host>
+  ```
+  
+  Execute orchestrator:
+  ```
+  node orchestrator.js ./config.js
+  ```
+  
+  ## Shutdown:
+ * All of the OpenWhisk resources can be shutdown gracefully using the template. The -f parameter takes either a local file or a remote     URL.
+  ```
+  oc process -f template.yml | oc delete -f -
+  oc delete all -l template=openwhisk
+  ```
+  Make sure that when you run ```oc get all``` after the above steps, the output is ``` No resources found ```
+  If there are still some pending pods/services/statefuls sets, you can delete them individually using ``` oc delete ```
+ * Alternatively, you can delete the project:
+  ```
+  oc delete project openwhisk
   ```
 
 ## Performance and Scalibilty Analysis
