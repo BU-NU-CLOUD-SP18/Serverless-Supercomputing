@@ -50,9 +50,8 @@ In addition to the orchestrator, this repo includes reports detailing the perfor
  * Download/Copy the template file at [https://git.io/openwhisk-template](https://git.io/openwhisk-template)
  * Add to project -> Add the template from previous step
  * Alter any parameters as you may need in the template wizard
- * Copy OpenWhisk authentication
  * Start the deployments
- * Once all the pods are running, you will need to see the steps to setup wsk cli and execute orchestrator from the command line steps section
+ * Once all the pods are running, you will need to see the steps to setup wsk cli and execute orchestrator from the _command line steps_ section
  
 ### Through command line:
 ### Prerequisite
@@ -218,6 +217,7 @@ Initially, we had a great deal of difficulty getting OpenWhisk running on OpenSh
 
 ##### Getting OpenWhisk running on OpenShift on the MOC 
 We encountered a resource issue when trying to deploy the OpenWhisk pods to OpenShift on the MOC. Working with our mentors, we were able to idenfitfy this issue, increase the resource limits and redeploy the project. 
+The issue we encountered was ```FailedCreatePodSandBox grpc: the connection is unavailable.``` error in the events of a lot of the pods (controller/kakfa/couchdb etc.). To resolve this, we changed the value of INVOKER_MAX_CONTAINERS (in template.yml) from 8 to 4.
 
 ##### General youngness of OpenWhisk
 When deploying the OpenWhisk pods on OpenShift, the latest container images are pulled from the docker registry. OpenWhisk is constantly being worked on by the Open Source community and developers at Red Hat, so the images are changing frequently. As a result, there have been several times when our setup has stopped working because the images changed without our knowledge and broken the previous setup.
