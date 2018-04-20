@@ -8,8 +8,8 @@ var configs = {
 	"numActions": NUM_ACTIONS,	// Number of actions to trigger
 	"actionLimits" : {		// Limits for each instance of an action
 		"timeout": 60000,	// Action timeout after (milliseconds, default 60000)
-		"memory": 128,		// Max memory for each action container (gb, default 256)
-		"logs": 10		// Max memory for each action log (gb, default 10)
+		"memory": 256,		// Max memory for each action container (mb, default 256)
+		"logs": 10		// Max memory for each action log (mb, default 10)
 	}
 };
 

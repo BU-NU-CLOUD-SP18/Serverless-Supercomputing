@@ -154,7 +154,8 @@ const getResultPromise = function(activationId){
 		    		responsesReceived++;
 		    		console.log(responsesReceived + " out of " + NUM_ACTIONS + " actions have finished");
 		    		resolve(resp.result);
-		    	} else if (resp.status == 'action developer error') {
+		    	} else if (resp.status == 'whisk internal error') {
+		    		// OpenWhisk internal error, try again, let OpenWhisk try different container
 		    		console.log('Action ' + activationId + ' failed, trying again');
 		    		console.log(body);
 		    		triggerActionPromise(activationIdToActionNumMap[activationId]).then(resolve).catch(reject);
@@ -163,6 +164,7 @@ const getResultPromise = function(activationId){
 		    	}
 		    } else if (!error && response.statusCode == 404) {
 		    	setTimeout(() => {
+		    		// Action hasn't finised yet, check again in 5 seconds
 			    	getResultPromise(activationId).then(resolve).catch(reject);
 		    	}, 5000);
 		    } else {
