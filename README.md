@@ -12,6 +12,7 @@ In addition to the orchestrator, this repo includes reports detailing the perfor
 * OpenShift cli for oc commands
 * OpenWhisk cli setup and wsk binaries path set in $PATH
 * If running on a VM, Node.js should be installed on the machine
+* 172.30.0.0/16 must be added as Docker insecure registry
 
 ### Commands
 ```
@@ -94,6 +95,53 @@ In addition to the orchestrator, this repo includes reports detailing the perfor
   node orchestrator.js ./config.js
   ```
   
+  ### Creating a config.js file
+  At the end of each config.js file, 3 things **must** be defined exported as shown below.
+  ```
+  exports.configs = ...;
+  exports.action = ...;
+  exports.reduce = ...;
+  ```
+  An option 4th export may be included.
+  ```
+  exports.argsForAction = ...;
+  ```
+  Each export is described in detail below.
+  #### Configs
+  This export is a JSON function specifying various attributes about the action to be run on OpenWhisk. the JSON must include:
+  ```
+  {
+     "namespace": "...",               // Namespace to be used by OpenWhisk on OpenShift
+     "actionName": "...",              // Name to give the OpenWhisk action
+     "numActions": ...,                // Number of actions to trigger
+     "actionLimits" : {                // Limits for each instance of an action
+         "timeout": ...,               // Action timeout after (milliseconds, default 60000)
+         "memory": ...,                // Max memory for each action container (mb, default 256)
+         "logs": ...	             // Max memory for each action log (mb, default 10)
+     }
+  }
+  ```
+  #### Action Function
+  ```exports.action = function(params){};```<br>
+  This is the function which will be run numActions times on OpenWhisk. The function takes in an object containing all parameters that are passed to it. For instance, if you pass a paramater called `name` to an OpenWhisk action, that action can access that argument as `params.name`. The return value of this function will be received by the reduce function.
+  
+ #### Reduce Function
+  ```exports.reduce = function(results){};```<br>
+  This function will called by the orchestrator to handle all of the results from the actions that are run. It takes in one arguement, which is an array of all of the actions results. 
+  
+#### Args for Action Function (optional)
+```exports.argsForAction = function(actionNum){};```<br>
+This optional function will generate the arguments that will be passed to the actions when they are run on OpenWhisk. It takes in an argument `actionNum` which represents which invocation number of the action arguments are being generate for. If each action is to receive the same arguments, simply ignore `actionNum` and return the desired arguments. However, this give the programmer the ability pass different arguements to different actions. For instance, if you want half of the arguments to have one argument, and half to have something else, your function could look like this:
+```
+function argsForAction(actionNum){
+    if (actionNum % 2 == 0) {
+        return {"someArgument" : "someValue"};
+    } else {
+        return {"someArgument" : "someOtherValue"};
+    }
+}
+ ```
+ 
   ## Shutdown:
  * All of the OpenWhisk resources can be shutdown gracefully using the template. The -f parameter takes either a local file or a remote     URL.
   ```
@@ -107,10 +155,24 @@ In addition to the orchestrator, this repo includes reports detailing the perfor
   oc delete project openwhisk
   ```
 
-## Performance and Scalibilty Analysis
+## Performance and Scalibilty Analysis on Single Node
 To take a deep dive in Performance and Scalibilty Analysis and what we learnt in each iteration refer "Performance and Scalibilty Analysis I.pdf" and "Performance and Scalibilty Analysis II.pdf" in performance-cpu-analysis
 
-## Project Proposal
+## Performance and Scalibilty Analysis on MOC
+
+## Challenges Faced
+##### Getting OpenWhisk running locally
+Initially, we had a great deal of difficulty getting OpenWhisk running on OpenShift locally. Because OpenWhisk is so young, there were only a few GitHub repos with instructions about how to get it set up locally, and most involved running the project on a Linux machine. Thus, when we encountered issues with our local setup, there weren't many resources to help us. Ultimately, we decided to create a 'local' environment within a Fedora VM on the MOC.
+
+##### Getting OpenWhisk running on OpenShift on the MOC 
+We encountered a resource issue when trying to deploy the OpenWhisk pods to OpenShift on the MOC. Working with our mentors, we were able to idenfitfy this issue, increase the resource limits and redeploy the project. 
+The issue we encountered was ```FailedCreatePodSandBox grpc: the connection is unavailable.``` error in the events of a lot of the pods (controller/kakfa/couchdb etc.). To resolve this, we changed the value of INVOKER_MAX_CONTAINERS (in template.yml) from 8 to 4.
+
+##### General youngness of OpenWhisk
+When deploying the OpenWhisk pods on OpenShift, the latest container images are pulled from the docker registry. OpenWhisk is constantly being worked on by the Open Source community and developers at Red Hat, so the images are changing frequently. As a result, there have been several times when our setup has stopped working because the images changed without our knowledge and broken the previous setup.
+
+
+## Initial Project Proposal
 
 ### 1.   Vision and Goals Of The Project:
 
@@ -209,15 +271,3 @@ There is not a particular end user who will be using this. Rather, this will ser
 
 ###### Deliverables
 - Performance Report
-
-
-## Challenges Faced
-##### Getting OpenWhisk running locally
-Initially, we had a great deal of difficulty getting OpenWhisk running on OpenShift locally. Because OpenWhisk is so young, there were only a few GitHub repos with instructions about how to get it set up locally, and most involved running the project on a Linux machine. Thus, when we encountered issues with our local setup, there weren't many resources to help us. Ultimately, we decided to create a 'local' environment within a Fedora VM on the MOC.
-
-##### Getting OpenWhisk running on OpenShift on the MOC 
-We encountered a resource issue when trying to deploy the OpenWhisk pods to OpenShift on the MOC. Working with our mentors, we were able to idenfitfy this issue, increase the resource limits and redeploy the project. 
-The issue we encountered was ```FailedCreatePodSandBox grpc: the connection is unavailable.``` error in the events of a lot of the pods (controller/kakfa/couchdb etc.). To resolve this, we changed the value of INVOKER_MAX_CONTAINERS (in template.yml) from 8 to 4.
-
-##### General youngness of OpenWhisk
-When deploying the OpenWhisk pods on OpenShift, the latest container images are pulled from the docker registry. OpenWhisk is constantly being worked on by the Open Source community and developers at Red Hat, so the images are changing frequently. As a result, there have been several times when our setup has stopped working because the images changed without our knowledge and broken the previous setup.
