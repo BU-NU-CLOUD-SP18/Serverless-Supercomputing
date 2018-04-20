@@ -95,7 +95,20 @@ In addition to the orchestrator, this repo includes reports detailing the perfor
   node orchestrator.js ./config.js
   ```
   
-  ### Creating a config.js file
+  ## Shutdown:
+ * All of the OpenWhisk resources can be shutdown gracefully using the template. The -f parameter takes either a local file or a remote     URL.
+  ```
+  oc process -f template.yml | oc delete -f -
+  oc delete all -l template=openwhisk
+  ```
+  Make sure that when you run ```oc get all``` after the above steps, the output is ``` No resources found ```
+  If there are still some pending pods/services/statefuls sets, you can delete them individually using ``` oc delete ```
+ * Alternatively, you can delete the project:
+  ```
+  oc delete project openwhisk
+  ```
+  
+  ## Creating a config.js file
   At the end of each config.js file, 3 things **must** be defined exported as shown below.
   ```
   exports.configs = ...;
@@ -141,19 +154,6 @@ function argsForAction(actionNum){
     }
 }
  ```
- 
-  ## Shutdown:
- * All of the OpenWhisk resources can be shutdown gracefully using the template. The -f parameter takes either a local file or a remote     URL.
-  ```
-  oc process -f template.yml | oc delete -f -
-  oc delete all -l template=openwhisk
-  ```
-  Make sure that when you run ```oc get all``` after the above steps, the output is ``` No resources found ```
-  If there are still some pending pods/services/statefuls sets, you can delete them individually using ``` oc delete ```
- * Alternatively, you can delete the project:
-  ```
-  oc delete project openwhisk
-  ```
 
 ## Performance and Scalibilty Analysis on Single Node
 To take a deep dive in Performance and Scalibilty Analysis and what we learnt in each iteration refer "Performance and Scalibilty Analysis I.pdf" and "Performance and Scalibilty Analysis II.pdf" in performance-cpu-analysis
