@@ -160,7 +160,15 @@ To take a deep dive in Performance and Scalibilty Analysis and what we learnt in
 
 ## Performance and Scalibilty Analysis on MOC
 
+### Varying Number of Actions and CPU per Action Container
+We ran several tests to evaluate the performance of the orchestrator running against OpenWhisk on the MOC.  For each test, we found the time that it took to test 100 billion points for the computation of pi using 4 action containers (a value configurable in the OpenWhisk yaml file). In the first set of tests, we varied the number of actions that the points were distributed across. This was done by changing the value of `numActions` in the congig.js file. Additionally, we varied the number of CPU cores that were assigned to each action container by setting defaults in the OpenShift project limits. The results are shown below: <br>
+![](https://github.com/BU-NU-CLOUD-SP18/Serverless-Supercomputing/blob/master/images/performance_tests_cpu.png) <br>
+The performance between running containers with 1 and 2 cores did not vary greatly, but it quickly became clear the when running with 4 action containers, it was optimal to keep the number of actions between 16 and 64, which is between 5 and 20 actions per container. We saw the same to be true when testing with 4 cores per container. With 4 cores, the increased processing power seemed to slightly increase the overall performance. However, the slight performance increase is probably not worth comsuming the additonal CPU resources.
+
 ## Challenges Faced
+##### Starting Kafka pod with default limit set to 1 CPU core per container
+When we were experimenting with CPU and memory limits for containers on the MOC, the Kafka pod would not come up unless the default pod CPU was greater than 1 core. This value could be reduced after Kafka was up, but not beforehand.
+
 ##### Getting OpenWhisk running locally
 Initially, we had a great deal of difficulty getting OpenWhisk running on OpenShift locally. Because OpenWhisk is so young, there were only a few GitHub repos with instructions about how to get it set up locally, and most involved running the project on a Linux machine. Thus, when we encountered issues with our local setup, there weren't many resources to help us. Ultimately, we decided to create a 'local' environment within a Fedora VM on the MOC.
 
@@ -271,3 +279,7 @@ There is not a particular end user who will be using this. Rather, this will ser
 
 ###### Deliverables
 - Performance Report
+
+
+## Final Burndown Chart
+![](https://github.com/BU-NU-CLOUD-SP18/Serverless-Supercomputing/blob/master/images/Burndown.png)
