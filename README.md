@@ -193,7 +193,7 @@ Command we ran
 - To tune the system to run greater number of actions, reduce memory from 256 MiB to 128 MiB.
 - With 8 containers and 128MiB per container, orchestrator drove OpenWhisk to run 5000 concurrent actions without breaking the system.
 
-### Experiment 1: Find optimal memory per container - Obervations and Results
+### Experiment 2 Find most CPU intrinsic processes - Obervations and Results
 1. Command used:
 `ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu`
 
