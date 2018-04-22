@@ -156,7 +156,67 @@ function argsForAction(actionNum){
  ```
 
 ## Performance and Scalibilty Analysis on Single Node
-To take a deep dive in Performance and Scalibilty Analysis and what we learnt in each iteration refer "Performance and Scalibilty Analysis I.pdf" and "Performance and Scalibilty Analysis II.pdf" in performance-cpu-analysis
+Before taking a deep dive in Performance and Scalibilty Analysis let's understand few properties in OpenWhisk template.yml
+ ```
+CONTROLLER_INSTANCES : The desired number of controllers
+INVOKER_INSTANCES : The desired number of invokers
+INVOKER_MAX_CONTAINERS: Maximum function containers per Invoker
+WHISK_ACTIONS_INVOKES_CONCURRENT: Default number of concurrent actions per user
+WHISK_ACTIONS_INVOKES_CONCURRENT_IN_SYSTEM: Number of concurrent actions allowed across the entire system
+WHISK_ACTIONS_INVOKES_PER_MINUTE: Default number of action invocations per minute per user
+ ```
+ 
+ For our experiments we set `WHISK_ACTIONS_INVOKES_CONCURRENT`, `WHISK_ACTIONS_INVOKES_CONCURRENT_IN_SYSTEM` and `WHISK_ACTIONS_INVOKES_PER_MINUTE` values to very numbers, 100K, so that tests aren’t obstructed by system limitation.
+ 
+```
+CONTROLLER_INSTANCES : 1
+INVOKER_INSTANCES : 1
+INVOKER_MAX_CONTAINERS: 8
+```
+### Tool used
+- The sysstat package contains various utilities, common to many commercial Unixes, to monitor system performance and usage activity. 
+- Utilities used sar and sadf
+       - sar collects, reports and saves system activity information. 
+       - sadf displays data collected by sar in multiple formats (CSV, XML, JSON, etc.) and can be used for data exchange with other    programs. This command can also be used to draw graphs for the various activities collected by sar using SVG (Scalable Vector Graphics) format.
+
+Command we ran
+`sar -u -o ./OUTOUT/run 1 60 : `
+-u : Report CPU utilization across all the cores
+-o : saves the output in the specified location
+1 : interval in second
+60 : total number of snapshots to be taken
+
+### Experiment 1: Find optimal memory per container - Obervations and Results
+- CPU utilisation was proportional to number of actions executed
+- At 2400 actions CPU utilisation was close to 100% and system became unresponsive
+- Memory allocated to functional containers was 256MiB
+- To tune the system to run greater number of actions, reduce memory from 256 MiB to 128 MiB.
+- With 8 containers and 128MiB per container, orchestrator drove OpenWhisk to run 5000 concurrent actions without breaking the system.
+
+### Experiment 1: Find optimal memory per container - Obervations and Results
+1. Command used:
+`ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu`
+
+2. Most CPU intrinsic processes in increasing order
+- OpenWhisk Controller & Invoker
+- Kafka
+- OpenShift
+
+3. Once during execution of 5000 actions Invoker and Controller (combined Java processes) reached 100%
+4. OpenShift was more or less at 100% entire duration 
+5. Functional containers weren’t given enough task
+6. Increase POINTS_PER_ACTION so that each container does good amount of task
+7. POINTS_PER_ACTION = TOTAL_POINTS / ACTIONS
+8. Re-run tests with 100,000 <= TOTAL_POINTS <= 1 Billion
+9. As we increased the requests (actions), the number of failed actions increased.
+10. Orchestrator started creating new actions using the activation id of the failed action to complete the request
+11. CPU utilisation of containers increased to 727.5%
+12. Orchestrator was able to drive OpenWhisk to handle large number of tasks
+13. Achieved “supercomputing” using OpenWhisk on a single node
+14. Time to switch to MOC cluster
+
+Also we have documented what we learnt in each iteration under "Performance and Scalibilty Analysis I.pdf" and "Performance and Scalibilty Analysis II.pdf" in performance-cpu-analysis.
+
 
 ## Performance and Scalibilty Analysis on MOC
 
