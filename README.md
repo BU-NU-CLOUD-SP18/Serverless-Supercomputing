@@ -201,6 +201,10 @@ Command we ran
 - OpenWhisk Controller & Invoker
 - Kafka
 - OpenShift
+![](https://github.com/BU-NU-CLOUD-SP18/Serverless-Supercomputing/blob/master/images/CPU-OPenSHift.png)
+![](https://github.com/BU-NU-CLOUD-SP18/Serverless-Supercomputing/blob/master/images/CPU-Kafka.png)
+![](https://github.com/BU-NU-CLOUD-SP18/Serverless-Supercomputing/blob/master/images/CPU-Invoker%20and%20COntroller.png)
+![](https://github.com/BU-NU-CLOUD-SP18/Serverless-Supercomputing/blob/master/images/CPU-Function%20containers.png)
 
 3. Once during execution of 5000 actions Invoker and Controller (combined Java processes) reached 100%
 4. OpenShift was more or less at 100% entire duration 
